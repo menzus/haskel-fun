@@ -1,4 +1,4 @@
-module RomanNumeral.Two where 
+module RomanNumeral.PatternMatch where 
 
 import Data.String
 import Data.Either
