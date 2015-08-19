@@ -7,7 +7,7 @@ import Data.Char
 import Data.Maybe
 import Data.String
 
-newtype Parser a = Parser(String -> [(a, String)])
+newtype Parser a = Parser (String -> [(a, String)])
 parse (Parser p) = p
 
 instance Functor Parser where
@@ -78,7 +78,37 @@ m = letter 'M' 1000
 minus   :: Parser Int -> Parser Int
 minus p = do { a <- p; return (-a) }
 
-zeroOrOne = upTo 1
+upTo1 :: Parser Int -> Parser Int
+upTo1 p = sumParser $ upTo 1 p
+
+upTo3 :: Parser Int -> Parser Int
+upTo3 p = sumParser $ upTo 3 p
+
+romanNumeralGroup       :: Parser Int -> Parser Int -> Parser Int -> Parser Int
+romanNumeralGroup i v x = do {
+    a <- minus i;
+    b <- (v |. x);
+    return (a + b);
+  } <|> do {
+    a <- v;
+    b <- upTo3 i;
+    return (a + b);
+  }
+
+ones = romanNumeralGroup i v x
+tens = romanNumeralGroup x l c
+hundreds = romanNumeralGroup c d m
+
+romanNumeral = do {
+    a <- upTo3 m;
+    b <- upTo1 hundreds;
+    c <- upTo1 tens;
+    d <- upTo1 ones;
+    return (a + b + c + d);
+  }
+
+sumParser   :: Parser [Int] -> Parser Int
+sumParser p = do { as <- p ; return (sum as)}
 
 --not needed 
 anyletter = i |. v |. x |. l |. c |. d |. m
