@@ -78,8 +78,8 @@ m = letter 'M' 1000
 minus   :: Parser Int -> Parser Int
 minus p = do { a <- p; return (-a) }
 
-sq     :: Parser Int -> Parser Int -> Parser Int
-sq p q = do {
+(.>)     :: Parser Int -> Parser Int -> Parser Int
+p .> q = do {
     a <- p;
     b <- q;
     return (a + b);
@@ -93,21 +93,15 @@ upTo3 p = sumParser $ upTo 3 p
 
 romanNumeralGroup       :: Parser Int -> Parser Int -> Parser Int -> Parser Int
 romanNumeralGroup i v x = fourOrNine <|> fiveAndOnes
-  where fourOrNine = minus i `sq` ( v |. x )
-        fiveAndOnes = upTo1 v `sq` upTo3 i
+  where fourOrNine = minus i .> ( v |. x )
+        fiveAndOnes = upTo1 v .> upTo3 i
 
 ones = romanNumeralGroup i v x
 tens = romanNumeralGroup x l c
 hundreds = romanNumeralGroup c d m
 
---romanNumeral = [ return (a + b + c + d) | a <- upTo3 m, b <- upTo1 hundreds, c <- upTo1 tens, d <- upTo1 ones ]
+romanNumeral = upTo3 m .> upTo1 hundreds .> upTo1 tens .> upTo1 ones 
 
 sumParser   :: Parser [Int] -> Parser Int
 sumParser p = do { as <- p ; return (sum as)}
-
---not needed 
-anyletter = i |. v |. x |. l |. c |. d |. m
-
---not needed 
-anyletters = mymany anyletter
 
