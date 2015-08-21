@@ -1,9 +1,9 @@
 module RomanNumeral.Monad where 
 
-import Control.Applicative
+import Control.Applicative hiding (optional)
 import Control.Monad
-import Data.Functor
 import Data.Char
+import Data.Functor
 import Data.Maybe
 import Data.String
 
@@ -47,17 +47,6 @@ p |. q = Parser (\cs -> case parse (p <|> q) cs of
                             []     -> []
                             (x:xs) -> [x])
 
---not needed, it's defined in alternative; there it's returning a long list, here it's returning only the first element (because of +++)
-mymany   :: Parser a -> Parser [a]
-mymany p = mymany1 p |. return []
-
-mymany1   :: Parser a -> Parser [a]
-mymany1 p = do {
-    a <- p; 
-    as <- mymany p;
-    return (a:as)
-  }
-
 upTo     :: Int -> Parser a -> Parser [a]
 upTo 0 _ = return []
 upTo n p = exactly n p |. upTo (n-1) p |. return []
@@ -85,23 +74,24 @@ p .> q = do {
     return (a + b);
   }
 
-upTo1 :: Parser Int -> Parser Int
-upTo1 p = sumParser $ upTo 1 p
+optional :: Parser Int -> Parser Int
+optional p = do { a <- p; return a } |. return 0
 
 upTo3 :: Parser Int -> Parser Int
-upTo3 p = sumParser $ upTo 3 p
+upTo3 p = sumP $ upTo 3 p
+  where sumP   :: Parser [Int] -> Parser Int
+        sumP p = do { as <- p ; return (sum as)}
 
 romanNumeralGroup       :: Parser Int -> Parser Int -> Parser Int -> Parser Int
 romanNumeralGroup i v x = fourOrNine <|> fiveAndOnes
   where fourOrNine = minus i .> ( v |. x )
-        fiveAndOnes = upTo1 v .> upTo3 i
+        fiveAndOnes = optional v .> upTo3 i
 
 ones = romanNumeralGroup i v x
 tens = romanNumeralGroup x l c
 hundreds = romanNumeralGroup c d m
 
-romanNumeral = upTo3 m .> upTo1 hundreds .> upTo1 tens .> upTo1 ones 
+romanNumeral :: Parser Int
+romanNumeral = upTo3 m .> optional hundreds .> optional tens .> optional ones 
 
-sumParser   :: Parser [Int] -> Parser Int
-sumParser p = do { as <- p ; return (sum as)}
 
