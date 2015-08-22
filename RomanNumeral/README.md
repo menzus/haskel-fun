@@ -1,0 +1,1 @@
+Originally they use empty list / singleton list to represent failure / success. It would be nicer to use Maybe.
