@@ -22,19 +22,19 @@ instance Monad Parser where
   p >>= f  = Parser (\cs -> concat [parse (f a) cs' | (a, cs') <- parse p cs])
 
 instance MonadPlus Parser where
-  mzero       = Parser (\inp -> [])
-  p `mplus` q = Parser (\inp -> (parse p inp ++ parse q inp))
+  mzero     = Parser (\inp -> [])
+  mplus p q = Parser (\inp -> (parse p inp ++ parse q inp))
 
 item :: Parser Char
 item = Parser (\cs -> case cs of
   ""     -> []
   (c:cs) -> [(c, cs)])
 
-sat   :: (Char -> Bool) -> Parser Char
-sat p = do { c <- item; if p c then return c else mzero}
+sat     :: (a -> Bool) -> Parser a -> Parser a
+sat l p = do { x <- p; if l x then return x else mzero }
 
 char   :: Char -> Parser Char
-char c = sat (c ==)
+char c = sat (c ==) item
 
 (|.)   :: Parser a -> Parser a -> Parser a
 p |. q = Parser (\cs -> case parse (p <|> q) cs of
@@ -42,8 +42,4 @@ p |. q = Parser (\cs -> case parse (p <|> q) cs of
                             (x:xs) -> [x])
 
 upTo     :: Int -> Parser a -> Parser [a]
-upTo 0 _ = return []
-upTo n p = exactly n p |. upTo (n-1) p |. return []
-  where exactly 0 _ = return []
-        exactly n p = do { a <- p; as <- exactly (n-1) p; return (a:as)}
-
+upTo n p = do { xs <- many p; if length xs <= n then return xs else mzero }
