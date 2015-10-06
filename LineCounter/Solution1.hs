@@ -8,7 +8,7 @@ task1 path = filesStats onePerFile path
   where onePerFile :: FilePath -> IO Int
         onePerFile _ = return 1
 
-task2 :: FilePath -> IO (Int, Int)
+task2 :: FilePath -> IO Int
 task2 path = filesStats linesInFile path
   where linesInFile :: FilePath -> IO Int
         linesInFile filePath = do
@@ -38,14 +38,14 @@ absolutePathsInTree rootPath = do
   if isDirectory then do
     directoryContents <- absolutePathsInDir rootPath
     subDirectoryContents <- sequence $ fmap absolutePathsInTree directoryContents
-    return $ concat subDirectoryContents
+    return $ mconcat subDirectoryContents
   else 
     return [rootPath]
   
   where absolutePathsInDir :: FilePath -> IO [FilePath]
         absolutePathsInDir rootFolder = do
         relativePaths <- getDirectoryContents rootFolder
-        return $ map asAbsolutePath $ filterDotPaths relativePaths
+        return $ fmap asAbsolutePath $ filterDotPaths relativePaths
 
         where filterDotPaths :: [FilePath] -> [FilePath]
               filterDotPaths = filter (`notElem` [".", ".."])
