@@ -1,35 +1,68 @@
 module LineCounter.Solution1 where 
 
+import Data.Char
+import Data.Monoid
+import Data.List
 import System.Directory
 import System.FilePath
 
-task1 :: FilePath -> IO Int
-task1 path = filesStats onePerFile path
-  where onePerFile :: FilePath -> IO Int
-        onePerFile _ = return 1
+-- 1) Count files recursively in directory
+type FileCount = Sum Int
 
-task2 :: FilePath -> IO Int
-task2 path = filesStats linesInFile path
-  where linesInFile :: FilePath -> IO Int
-        linesInFile filePath = do
-          content <- readFile filePath
-          return $ length $ lines content
+task1 :: FilePath -> IO FileCount
+task1 = filesStats allFiles onePerFile
 
---task3 :: FilePath -> IO (Int, Int, Int)
---task3 path = filesStats javaStatsInFile path
---  where javaStatsInFile :: FilePath -> IO (Int, Int, Int)
---        javaStatsInFile filePath = 
---          content <- readFile filePath
---          return $ length $ lines content
+allFiles :: FilePath -> Bool
+allFiles = const True
 
-instance Monoid Int where
-  mempty = 0
-  mappend = (+)
+onePerFile :: FilePath -> IO FileCount
+onePerFile = const $ return (Sum 1)
 
-filesStats :: Monoid a => (FilePath -> IO a) -> FilePath -> IO a
-filesStats f rootPath = do
+-- 2) Count files, and lines recursively in directory
+type LineCount = Sum Int
+
+task2 :: FilePath -> IO (FileCount, LineCount)
+task2 = filesStats allFiles $ tuplify onePerFile linesInFile
+
+linesInFile :: FilePath -> IO LineCount
+linesInFile filePath = do
+  content <- readFile filePath
+  return $ Sum $ length $ lines content
+
+tuplify :: Monad f => (a -> f b) -> (a -> f c) -> (a -> f (b, c))
+tuplify f g = \a -> do 
+  b <- (f a)
+  c <- (g a)
+  return (b, c)
+
+-- 3) Count code/whitespace/comments of Java code recursively in directory
+type JavaStats = (LineCount, LineCount, LineCount)
+
+task3 :: FilePath -> IO JavaStats
+task3 path = filesStats javaFiles javaStatsInFile path
+
+javaStatsInFile :: FilePath -> IO JavaStats
+javaStatsInFile filePath = do
+  content <- readFile filePath
+  return $ foldl mappend mempty $ fmap javaStatsInLine $ lines content
+
+  where javaStatsInLine :: String -> JavaStats
+        javaStatsInLine line 
+          | isPrefixOf "//" $ strip line = (Sum 0, Sum 0, Sum 1)
+          | null $ strip line            = (Sum 0, Sum 1, Sum 0)
+          | otherwise                    = (Sum 1, Sum 0, Sum 0)
+
+        strip :: String -> String
+        strip = dropWhile isSpace
+
+javaFiles :: FilePath -> Bool
+javaFiles f = isSuffixOf ".java" f
+
+-- Utility methods
+filesStats :: Monoid a => (FilePath -> Bool) -> (FilePath -> IO a) -> FilePath -> IO a
+filesStats p f rootPath = do
   paths <- absolutePathsInTree rootPath
-  values <- sequence $ fmap f paths
+  values <- sequence $ fmap f $ filter p paths
   return $ foldl mappend mempty values
 
 absolutePathsInTree :: FilePath -> IO [FilePath]
